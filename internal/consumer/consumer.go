@@ -2,28 +2,32 @@ package consumer
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/hex"
 	"fmt"
 	"os"
 	"sync"
 
 	"github.com/jarkkom/kafkadog/internal/config"
+	"github.com/jarkkom/kafkadog/internal/format"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
 // Consumer handles Kafka message consumption
 type Consumer struct {
 	client *kgo.Client
-	format config.Format
+	codec  format.Codec
 }
 
 // New creates a new Consumer instance
-func New(client *kgo.Client, format config.Format) *Consumer {
+func New(client *kgo.Client, formatStr config.Format) (*Consumer, error) {
+	codec, err := format.NewCodec(string(formatStr))
+	if err != nil {
+		return nil, err
+	}
+
 	return &Consumer{
 		client: client,
-		format: format,
-	}
+		codec:  codec,
+	}, nil
 }
 
 // Run starts the consumer writing to stdout
@@ -48,16 +52,12 @@ func (c *Consumer) Run(ctx context.Context, wg *sync.WaitGroup) {
 			}
 
 			fetches.EachRecord(func(record *kgo.Record) {
-				var output string
-				switch c.format {
-				case config.FormatHex:
-					output = hex.EncodeToString(record.Value)
-				case config.FormatBase64:
-					output = base64.StdEncoding.EncodeToString(record.Value)
-				default: // FormatRaw
-					output = string(record.Value)
+				encoded, err := c.codec.Encode(record.Value)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error encoding message: %v\n", err)
+					return
 				}
-				fmt.Println(output)
+				fmt.Println(string(encoded))
 			})
 		}
 	}

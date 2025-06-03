@@ -3,13 +3,12 @@ package producer
 import (
 	"bufio"
 	"context"
-	"encoding/base64"
-	"encoding/hex"
 	"fmt"
 	"os"
 	"sync"
 
 	"github.com/jarkkom/kafkadog/internal/config"
+	"github.com/jarkkom/kafkadog/internal/format"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
@@ -17,16 +16,21 @@ import (
 type Producer struct {
 	client *kgo.Client
 	topic  string
-	format config.Format
+	codec  format.Codec
 }
 
 // New creates a new Producer instance
-func New(client *kgo.Client, topic string, format config.Format) *Producer {
+func New(client *kgo.Client, topic string, formatStr config.Format) (*Producer, error) {
+	codec, err := format.NewCodec(string(formatStr))
+	if err != nil {
+		return nil, err
+	}
+
 	return &Producer{
 		client: client,
 		topic:  topic,
-		format: format,
-	}
+		codec:  codec,
+	}, nil
 }
 
 // Run starts the producer reading from stdin
@@ -40,25 +44,10 @@ func (p *Producer) Run(ctx context.Context, wg *sync.WaitGroup) {
 			return
 		default:
 			input := scanner.Bytes()
-			var value []byte
-			var err error
-
-			// Decode input based on format
-			switch p.format {
-			case config.FormatHex:
-				value, err = hex.DecodeString(string(input))
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Failed to decode hex input: %v\n", err)
-					continue
-				}
-			case config.FormatBase64:
-				value, err = base64.StdEncoding.DecodeString(string(input))
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Failed to decode base64 input: %v\n", err)
-					continue
-				}
-			default: // FormatRaw
-				value = input
+			value, err := p.codec.Decode(input)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to decode input: %v\n", err)
+				continue
 			}
 
 			record := &kgo.Record{
