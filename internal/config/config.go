@@ -4,19 +4,12 @@ import (
 	"flag"
 	"fmt"
 	"strings"
+
+	ff "github.com/jarkkom/kafkadog/internal/format"
 )
 
 // Format represents the format for displaying/inputting messages
 type Format string
-
-const (
-	// FormatRaw handles messages as-is
-	FormatRaw Format = "raw"
-	// FormatHex handles messages as hex encoded
-	FormatHex Format = "hex"
-	// FormatBase64 handles messages as base64 encoded
-	FormatBase64 Format = "base64"
-)
 
 // Config holds application configuration
 type Config struct {
@@ -39,10 +32,13 @@ func Parse() (*Config, error) {
 		consumeMode   bool
 	)
 
+	availableFormats := ff.GetAvailableFormats()
+	formatUsage := fmt.Sprintf("Message format: %s (for input in producer mode, output in consumer mode)", strings.Join(availableFormats, ", "))
+
 	flag.StringVar(&brokers, "b", "localhost:9092", "Kafka broker(s) separated by commas")
 	flag.StringVar(&topic, "t", "", "Topic to produce to or consume from")
 	flag.StringVar(&consumerGroup, "G", "kafkadog", "Consumer group ID (for consume mode)")
-	flag.StringVar(&format, "f", "raw", "Message format: raw, hex, base64 (for input in producer mode, output in consumer mode)")
+	flag.StringVar(&format, "f", "raw", formatUsage)
 	flag.BoolVar(&produceMode, "P", false, "Producer mode - read from stdin and send to Kafka")
 	flag.BoolVar(&consumeMode, "C", false, "Consumer mode - read from Kafka and write to stdout")
 
@@ -61,10 +57,10 @@ func Parse() (*Config, error) {
 		return nil, fmt.Errorf("cannot use both produce (-P) and consume (-C) modes simultaneously")
 	}
 
-	// Validate format
-	msgFormat := Format(format)
-	if msgFormat != FormatRaw && msgFormat != FormatHex && msgFormat != FormatBase64 {
-		return nil, fmt.Errorf("invalid format (-f): %s. Must be one of: raw, hex, base64", format)
+	// Validate the format by checking if a codec exists for it
+	_, err := ff.NewCodec(format)
+	if err != nil {
+		return nil, fmt.Errorf("invalid format (-f): %s. Must be one of: %s", format, strings.Join(availableFormats, ", "))
 	}
 
 	return &Config{
@@ -73,6 +69,6 @@ func Parse() (*Config, error) {
 		ConsumerGroup: consumerGroup,
 		ProduceMode:   produceMode,
 		ConsumeMode:   consumeMode,
-		Format:        msgFormat,
+		Format:        Format(format),
 	}, nil
 }

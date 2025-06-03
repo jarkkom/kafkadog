@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"strings"
 )
 
 // Codec is the interface for encoding/decoding messages in different formats
@@ -12,6 +13,31 @@ type Codec interface {
 	Decode(input []byte) ([]byte, error)
 	// Encode transforms raw bytes to the encoded format
 	Encode(input []byte) ([]byte, error)
+}
+
+// NewCodec returns a codec for the specified format
+func NewCodec(format string) (Codec, error) {
+	factory, ok := codecRegistry[format]
+	if ok {
+		return factory(), nil
+	}
+
+	return nil, fmt.Errorf("unsupported format: %s", format)
+}
+
+// Register built-in codecs
+func init() {
+	registerCodec("raw", func() Codec {
+		return &RawCodec{}
+	})
+
+	registerCodec("hex", func() Codec {
+		return &HexCodec{}
+	})
+
+	registerCodec("base64", func() Codec {
+		return &Base64Codec{}
+	})
 }
 
 // RawCodec handles messages without any encoding/decoding
@@ -32,7 +58,9 @@ type HexCodec struct{}
 
 // Decode converts hex encoded bytes to raw bytes
 func (c *HexCodec) Decode(input []byte) ([]byte, error) {
-	output, err := hex.DecodeString(string(input))
+	// Trim any whitespace that might be present
+	hexStr := strings.TrimSpace(string(input))
+	output, err := hex.DecodeString(hexStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode hex: %w", err)
 	}
@@ -41,9 +69,7 @@ func (c *HexCodec) Decode(input []byte) ([]byte, error) {
 
 // Encode converts raw bytes to hex encoded bytes
 func (c *HexCodec) Encode(input []byte) ([]byte, error) {
-	output := make([]byte, hex.EncodedLen(len(input)))
-	hex.Encode(output, input)
-	return output, nil
+	return []byte(hex.EncodeToString(input)), nil
 }
 
 // Base64Codec handles messages in base64 format
@@ -51,7 +77,9 @@ type Base64Codec struct{}
 
 // Decode converts base64 encoded bytes to raw bytes
 func (c *Base64Codec) Decode(input []byte) ([]byte, error) {
-	output, err := base64.StdEncoding.DecodeString(string(input))
+	// Trim any whitespace that might be present
+	b64Str := strings.TrimSpace(string(input))
+	output, err := base64.StdEncoding.DecodeString(b64Str)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode base64: %w", err)
 	}
@@ -60,21 +88,5 @@ func (c *Base64Codec) Decode(input []byte) ([]byte, error) {
 
 // Encode converts raw bytes to base64 encoded bytes
 func (c *Base64Codec) Encode(input []byte) ([]byte, error) {
-	output := make([]byte, base64.StdEncoding.EncodedLen(len(input)))
-	base64.StdEncoding.Encode(output, input)
-	return output, nil
-}
-
-// NewCodec returns a codec based on the specified format
-func NewCodec(format string) (Codec, error) {
-	switch format {
-	case "raw":
-		return &RawCodec{}, nil
-	case "hex":
-		return &HexCodec{}, nil
-	case "base64":
-		return &Base64Codec{}, nil
-	default:
-		return nil, fmt.Errorf("unsupported format: %s", format)
-	}
+	return []byte(base64.StdEncoding.EncodeToString(input)), nil
 }
