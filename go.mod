@@ -1,4 +1,4 @@
-module kafkadog
+module github.com/jarkkom/kafkadog
 
 go 1.23.8
 

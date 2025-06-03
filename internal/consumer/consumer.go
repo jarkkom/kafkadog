@@ -2,22 +2,27 @@ package consumer
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"sync"
 
+	"github.com/jarkkom/kafkadog/internal/config"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
 // Consumer handles Kafka message consumption
 type Consumer struct {
 	client *kgo.Client
+	format config.Format
 }
 
 // New creates a new Consumer instance
-func New(client *kgo.Client) *Consumer {
+func New(client *kgo.Client, format config.Format) *Consumer {
 	return &Consumer{
 		client: client,
+		format: format,
 	}
 }
 
@@ -43,7 +48,16 @@ func (c *Consumer) Run(ctx context.Context, wg *sync.WaitGroup) {
 			}
 
 			fetches.EachRecord(func(record *kgo.Record) {
-				fmt.Println(string(record.Value))
+				var output string
+				switch c.format {
+				case config.FormatHex:
+					output = hex.EncodeToString(record.Value)
+				case config.FormatBase64:
+					output = base64.StdEncoding.EncodeToString(record.Value)
+				default: // FormatRaw
+					output = string(record.Value)
+				}
+				fmt.Println(output)
 			})
 		}
 	}
