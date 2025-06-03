@@ -17,10 +17,11 @@ type Consumer struct {
 	codec          format.Codec
 	decodeProtobuf bool
 	protobufCodec  format.Codec // Separate codec for protobuf decoding
+	messageCount   int          // Number of messages to read, 0 for unlimited
 }
 
 // New creates a new Consumer instance
-func New(client *kgo.Client, formatStr config.Format, decodeProtobuf bool) (*Consumer, error) {
+func New(client *kgo.Client, formatStr config.Format, decodeProtobuf bool, messageCount int) (*Consumer, error) {
 	codec, err := format.NewCodec(string(formatStr))
 	if err != nil {
 		return nil, err
@@ -39,6 +40,7 @@ func New(client *kgo.Client, formatStr config.Format, decodeProtobuf bool) (*Con
 		codec:          codec,
 		decodeProtobuf: decodeProtobuf,
 		protobufCodec:  protoCodec,
+		messageCount:   messageCount,
 	}, nil
 }
 
@@ -46,7 +48,15 @@ func New(client *kgo.Client, formatStr config.Format, decodeProtobuf bool) (*Con
 func (c *Consumer) Run(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
+	// Counter for messages read
+	messagesRead := 0
+
 	for {
+		// Check if we've reached the message limit
+		if c.messageCount > 0 && messagesRead >= c.messageCount {
+			return
+		}
+
 		select {
 		case <-ctx.Done():
 			return
@@ -64,6 +74,11 @@ func (c *Consumer) Run(ctx context.Context, wg *sync.WaitGroup) {
 			}
 
 			fetches.EachRecord(func(record *kgo.Record) {
+				// Check if we've reached the message limit
+				if c.messageCount > 0 && messagesRead >= c.messageCount {
+					return
+				}
+
 				var value []byte
 				var err error
 
@@ -86,6 +101,9 @@ func (c *Consumer) Run(ctx context.Context, wg *sync.WaitGroup) {
 				}
 
 				fmt.Println(string(encoded))
+
+				// Increment the message counter
+				messagesRead++
 			})
 		}
 	}

@@ -41,6 +41,18 @@ kafkadog -b kafka-broker:9092 -t my-topic
 
 # Use a specific consumer group
 kafkadog -b kafka-broker:9092 -t my-topic -G my-consumer-group
+
+# Start consuming from the beginning of the topic
+kafkadog -t my-topic -o beginning
+
+# Start consuming from the end of the topic (only new messages)
+kafkadog -t my-topic -o end
+
+# Start consuming from a specific offset
+kafkadog -t my-topic -o 100
+
+# Start consuming from 10 messages before the current end
+kafkadog -t my-topic -o -10
 ```
 
 #### Producing Messages
@@ -65,6 +77,12 @@ kafkadog -t my-topic -f hex
 
 # Consume messages and output in base64 format
 kafkadog -t my-topic -f base64
+
+# Limit the number of consumed messages to 10
+kafkadog -t my-topic -c 10
+
+# Consume 5 messages in hex format
+kafkadog -t my-topic -f hex -c 5
 
 # Produce messages from hex input
 echo "48656C6C6F204B61666B61" | kafkadog -t my-topic -P -f hex
@@ -91,11 +109,20 @@ kafkadog -t protobuf-topic -proto -f hex
 # Consume messages from a remote broker, decode as protobuf, and output as raw text
 kafkadog -b remote-kafka:9092 -t events -G analytics-group -proto
 
+# Consume only 50 messages, decode as protobuf, and display in hex format
+kafkadog -b remote-kafka:9092 -t binary-events -proto -f hex -c 50
+
+# Start consuming from offset 1000, decode as protobuf
+kafkadog -b remote-kafka:9092 -t events -o 1000 -proto
+
+# Get the latest 20 messages from the topic
+kafkadog -t my-topic -o -20 -c 20
+
 # Produce binary data from hex representation
 cat binary-data.hex | kafkadog -b kafka-broker:9092 -t binary-topic -P -f hex
 ```
 
-## Command-Line Options
+## Command-Line Options|
 
 | Option | Description |
 |--------|-------------|
@@ -106,6 +133,8 @@ cat binary-data.hex | kafkadog -b kafka-broker:9092 -t binary-topic -P -f hex
 | `-P` | Producer mode - read from stdin and send to Kafka |
 | `-C` | Consumer mode - read from Kafka and write to stdout (default if neither -P nor -C specified) |
 | `-proto` | Decode binary data as Protocol Buffers before applying output format |
+| `-c` | Number of messages to read in consumer mode (0 for unlimited, default: 0) |
+| `-o` | Consumer offset - where to start consuming from: 'beginning', 'end', or an offset value (default: "end") |
 
 ## Examples with Actual Output
 
@@ -155,4 +184,3 @@ $ kafkadog -t user-events -proto
 Apache License 2.0
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
-````

@@ -19,7 +19,9 @@ type Config struct {
 	ProduceMode    bool
 	ConsumeMode    bool
 	Format         Format
-	DecodeProtobuf bool // New field for protobuf decoding
+	DecodeProtobuf bool   // New field for protobuf decoding
+	MessageCount   int    // Number of messages to read in consumer mode, 0 for unlimited
+	ConsumerOffset string // Controls where to start consuming from: "beginning", "end", or an offset value
 }
 
 // Parse processes command line arguments and returns a Config
@@ -31,7 +33,9 @@ func Parse() (*Config, error) {
 		format         string
 		produceMode    bool
 		consumeMode    bool
-		decodeProtobuf bool // New variable for protobuf decoding flag
+		decodeProtobuf bool   // New variable for protobuf decoding flag
+		messageCount   int    // Number of messages to read in consumer mode
+		consumerOffset string // New variable for consumer offset flag
 	)
 
 	availableFormats := ff.GetAvailableFormats()
@@ -44,6 +48,8 @@ func Parse() (*Config, error) {
 	flag.BoolVar(&produceMode, "P", false, "Producer mode - read from stdin and send to Kafka")
 	flag.BoolVar(&consumeMode, "C", false, "Consumer mode - read from Kafka and write to stdout")
 	flag.BoolVar(&decodeProtobuf, "proto", false, "Decode binary data as Protocol Buffers before applying output format")
+	flag.IntVar(&messageCount, "c", 0, "Number of messages to read in consumer mode (0 for unlimited)")
+	flag.StringVar(&consumerOffset, "o", "beginning", "Consumer offset - where to start consuming from: 'beginning', 'end', or an offset value")
 
 	flag.Parse()
 
@@ -74,5 +80,7 @@ func Parse() (*Config, error) {
 		ConsumeMode:    consumeMode,
 		Format:         Format(format),
 		DecodeProtobuf: decodeProtobuf,
+		MessageCount:   messageCount,
+		ConsumerOffset: consumerOffset,
 	}, nil
 }
