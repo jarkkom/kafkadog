@@ -3,9 +3,11 @@ package config
 import (
 	"flag"
 	"fmt"
+	"strconv"
 	"strings"
 
 	ff "github.com/jarkkom/kafkadog/internal/format"
+	"github.com/twmb/franz-go/pkg/kgo"
 )
 
 // Format represents the format for displaying/inputting messages
@@ -79,4 +81,39 @@ func Parse() (*Config, error) {
 		MessageCount:   messageCount,
 		ConsumerOffset: consumerOffset,
 	}, nil
+}
+
+// CreateConsumerOffset creates a kgo.Offset based on the ConsumerOffset config value
+// It handles "beginning", "end", and numerical offset values (both absolute and relative)
+func (c *Config) CreateConsumerOffset() (kgo.Offset, error) {
+	// Default to consuming from the end of the topic
+	kafkaOffset := kgo.NewOffset().AtEnd()
+
+	// Handle empty string as end
+	if c.ConsumerOffset == "" {
+		return kafkaOffset, nil
+	}
+
+	switch c.ConsumerOffset {
+	case "beginning":
+		kafkaOffset = kgo.NewOffset().AtStart()
+	case "end":
+		kafkaOffset = kgo.NewOffset().AtEnd()
+	default:
+		// Try to parse as integer
+		offsetVal, err := strconv.ParseInt(c.ConsumerOffset, 10, 64)
+		if err != nil {
+			return kafkaOffset, fmt.Errorf("invalid offset value '%s': %w", c.ConsumerOffset, err)
+		}
+
+		if offsetVal < 0 {
+			// Negative value means relative offset from end
+			kafkaOffset = kgo.NewOffset().Relative(offsetVal)
+		} else {
+			// Non-negative value is an absolute offset
+			kafkaOffset = kgo.NewOffset().At(offsetVal)
+		}
+	}
+
+	return kafkaOffset, nil
 }

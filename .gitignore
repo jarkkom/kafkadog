@@ -1,2 +1,3 @@
 /kafkadog
 .vscode/launch.json
+coverage.out

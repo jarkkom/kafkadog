@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"strconv"
 	"sync"
 	"syscall"
 
@@ -28,31 +27,11 @@ func main() {
 	}
 
 	if cfg.ConsumeMode {
-		// Default to consuming from the end of the topic
-		// unless specified otherwise by the consumer offset flag
-		kafkaOffset := kgo.NewOffset().AtEnd()
-
-		if cfg.ConsumerOffset == "" {
-			switch cfg.ConsumerOffset {
-			case "beginning":
-				kafkaOffset = kgo.NewOffset().AtStart()
-			case "end":
-				kafkaOffset = kgo.NewOffset().AtEnd()
-			default:
-				// Try to parse as integer
-				if offsetVal, err := strconv.ParseInt(cfg.ConsumerOffset, 10, 64); err == nil {
-					if offsetVal < 0 {
-						// Negative value means relative offset from end
-						kafkaOffset = kgo.NewOffset().Relative(offsetVal)
-					} else {
-						// Non-negative value is an absolute offset
-						kafkaOffset = kgo.NewOffset().At(offsetVal)
-					}
-				} else {
-					fmt.Fprintf(os.Stderr, "Warning: Invalid offset value '%s', defaulting to end\n", cfg.ConsumerOffset)
-					kafkaOffset = kgo.NewOffset().AtEnd()
-				}
-			}
+		// Get the consumer offset from configuration
+		kafkaOffset, err := cfg.CreateConsumerOffset()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: %v, defaulting to end of topic\n", err)
+			kafkaOffset = kgo.NewOffset().AtEnd()
 		}
 
 		// Set options for direct topic consumption without joining a consumer group
