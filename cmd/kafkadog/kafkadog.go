@@ -30,31 +30,31 @@ func main() {
 	if cfg.ConsumeMode {
 		// Prepare the offset based on the config
 		var kafkaOffset kgo.Offset
-		switch cfg.ConsumerOffset {
-		case "beginning":
-			kafkaOffset = kgo.NewOffset().AtStart()
-		case "end":
-			kafkaOffset = kgo.NewOffset().AtEnd()
-		default:
-			// Try to parse as integer
-			if offsetVal, err := strconv.ParseInt(cfg.ConsumerOffset, 10, 64); err == nil {
-				if offsetVal < 0 {
-					// Negative value means relative offset from end
-					kafkaOffset = kgo.NewOffset().Relative(offsetVal)
-				} else {
-					// Non-negative value is an absolute offset
-					kafkaOffset = kgo.NewOffset().At(offsetVal)
-				}
-			} else {
-				fmt.Fprintf(os.Stderr, "Warning: Invalid offset value '%s', defaulting to beginning\n", cfg.ConsumerOffset)
+			switch cfg.ConsumerOffset {
+			case "beginning":
+				kafkaOffset = kgo.NewOffset().AtStart()
+			case "end":
 				kafkaOffset = kgo.NewOffset().AtEnd()
+			default:
+				// Try to parse as integer
+				if offsetVal, err := strconv.ParseInt(cfg.ConsumerOffset, 10, 64); err == nil {
+					if offsetVal < 0 {
+						// Negative value means relative offset from end
+						kafkaOffset = kgo.NewOffset().Relative(offsetVal)
+					} else {
+						// Non-negative value is an absolute offset
+						kafkaOffset = kgo.NewOffset().At(offsetVal)
+					}
+				} else {
+				fmt.Fprintf(os.Stderr, "Warning: Invalid offset value '%s', defaulting to beginning\n", cfg.ConsumerOffset)
+					kafkaOffset = kgo.NewOffset().AtEnd()
 			}
 		}
 
 		opts = append(opts,
-			kgo.ConsumerGroup(cfg.ConsumerGroup),
 			kgo.ConsumeTopics(cfg.Topic),
 			kgo.ConsumeResetOffset(kafkaOffset),
+			kgo.ConsumerGroup(""), // Empty group ID prevents joining a consumer group
 		)
 	}
 

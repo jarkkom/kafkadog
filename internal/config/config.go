@@ -15,7 +15,6 @@ type Format string
 type Config struct {
 	Brokers        []string
 	Topic          string
-	ConsumerGroup  string
 	ProduceMode    bool
 	ConsumeMode    bool
 	Format         Format
@@ -29,7 +28,6 @@ func Parse() (*Config, error) {
 	var (
 		brokers        string
 		topic          string
-		consumerGroup  string
 		format         string
 		produceMode    bool
 		consumeMode    bool
@@ -43,7 +41,6 @@ func Parse() (*Config, error) {
 
 	flag.StringVar(&brokers, "b", "localhost:9092", "Kafka broker(s) separated by commas")
 	flag.StringVar(&topic, "t", "", "Topic to produce to or consume from")
-	flag.StringVar(&consumerGroup, "G", "kafkadog", "Consumer group ID (for consume mode)")
 	flag.StringVar(&format, "f", "raw", formatUsage)
 	flag.BoolVar(&produceMode, "P", false, "Producer mode - read from stdin and send to Kafka")
 	flag.BoolVar(&consumeMode, "C", false, "Consumer mode - read from Kafka and write to stdout")
@@ -75,7 +72,6 @@ func Parse() (*Config, error) {
 	return &Config{
 		Brokers:        strings.Split(brokers, ","),
 		Topic:          topic,
-		ConsumerGroup:  consumerGroup,
 		ProduceMode:    produceMode,
 		ConsumeMode:    consumeMode,
 		Format:         Format(format),
