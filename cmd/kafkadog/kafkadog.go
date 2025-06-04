@@ -28,8 +28,11 @@ func main() {
 	}
 
 	if cfg.ConsumeMode {
-		// Prepare the offset based on the config
-		var kafkaOffset kgo.Offset
+		// Default to consuming from the end of the topic
+		// unless specified otherwise by the consumer offset flag
+		kafkaOffset := kgo.NewOffset().AtEnd()
+
+		if cfg.ConsumerOffset == "" {
 			switch cfg.ConsumerOffset {
 			case "beginning":
 				kafkaOffset = kgo.NewOffset().AtStart()
@@ -46,11 +49,13 @@ func main() {
 						kafkaOffset = kgo.NewOffset().At(offsetVal)
 					}
 				} else {
-				fmt.Fprintf(os.Stderr, "Warning: Invalid offset value '%s', defaulting to beginning\n", cfg.ConsumerOffset)
+					fmt.Fprintf(os.Stderr, "Warning: Invalid offset value '%s', defaulting to end\n", cfg.ConsumerOffset)
 					kafkaOffset = kgo.NewOffset().AtEnd()
+				}
 			}
 		}
 
+		// Set options for direct topic consumption without joining a consumer group
 		opts = append(opts,
 			kgo.ConsumeTopics(cfg.Topic),
 			kgo.ConsumeResetOffset(kafkaOffset),
