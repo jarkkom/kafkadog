@@ -1,8 +1,6 @@
 module github.com/jarkkom/kafkadog
 
-go 1.23.8
-
-toolchain go1.24.3
+go 1.24.3
 
 require (
 	github.com/twmb/franz-go v1.19.5
