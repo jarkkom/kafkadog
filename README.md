@@ -39,9 +39,6 @@ kafkadog -t my-topic
 # Consume messages from a specific broker
 kafkadog -b kafka-broker:9092 -t my-topic
 
-# Use a specific consumer group
-kafkadog -b kafka-broker:9092 -t my-topic -G my-consumer-group
-
 # Start consuming from the beginning of the topic
 kafkadog -t my-topic -o beginning
 
@@ -107,7 +104,7 @@ kafkadog -t protobuf-topic -proto -f hex
 
 ```bash
 # Consume messages from a remote broker, decode as protobuf, and output as raw text
-kafkadog -b remote-kafka:9092 -t events -G analytics-group -proto
+kafkadog -b remote-kafka:9092 -t events -proto
 
 # Consume only 50 messages, decode as protobuf, and display in hex format
 kafkadog -b remote-kafka:9092 -t binary-events -proto -f hex -c 50
@@ -128,7 +125,6 @@ cat binary-data.hex | kafkadog -b kafka-broker:9092 -t binary-topic -P -f hex
 |--------|-------------|
 | `-b` | Kafka broker(s) separated by commas (default: "localhost:9092") |
 | `-t` | Topic to produce to or consume from (required) |
-| `-G` | Consumer group ID (default: "kafkadog") |
 | `-f` | Format: raw, hex, base64 (default: "raw") |
 | `-P` | Producer mode - read from stdin and send to Kafka |
 | `-C` | Consumer mode - read from Kafka and write to stdout (default if neither -P nor -C specified) |
