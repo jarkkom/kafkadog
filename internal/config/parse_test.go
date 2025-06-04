@@ -159,7 +159,7 @@ func TestParse(t *testing.T) {
 			os.Args = tt.args
 
 			cfg, err := Parse()
-			
+
 			// Check for expected errors
 			if tt.expectedError && err == nil {
 				t.Errorf("Expected error, got nil")
