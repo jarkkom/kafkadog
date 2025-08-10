@@ -21,7 +21,7 @@ type Consumer struct {
 }
 
 // New creates a new Consumer instance
-func New(client *kgo.Client, formatStr config.Format, decodeProtobuf bool, messageCount int) (*Consumer, error) {
+func New(client *kgo.Client, formatStr config.Format, decodeProtobuf bool, messageCount int, protoImportDirs []string, messageType string) (*Consumer, error) {
 	codec, err := format.NewCodec(string(formatStr))
 	if err != nil {
 		return nil, err
@@ -29,7 +29,13 @@ func New(client *kgo.Client, formatStr config.Format, decodeProtobuf bool, messa
 
 	var protoCodec format.Codec
 	if decodeProtobuf {
-		protoCodec, err = format.NewCodec("protobuf")
+		// Use schema-based protobuf codec if import dirs and message type are provided
+		if len(protoImportDirs) > 0 && messageType != "" {
+			protoCodec, err = format.NewCodecWithSchema("protobuf", protoImportDirs, messageType)
+		} else {
+			protoCodec, err = format.NewCodec("protobuf")
+		}
+
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize protobuf decoder: %w", err)
 		}

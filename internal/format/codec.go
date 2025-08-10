@@ -25,6 +25,17 @@ func NewCodec(format string) (Codec, error) {
 	return nil, fmt.Errorf("unsupported format: %s", format)
 }
 
+// NewCodecWithSchema returns a codec for the specified format with schema support
+func NewCodecWithSchema(format string, importDirs []string, messageType string) (Codec, error) {
+	// For schema-based protobuf, create a special codec
+	if format == "protobuf" && len(importDirs) > 0 && messageType != "" {
+		return NewProtoSchemaCodec(importDirs, messageType)
+	}
+
+	// Fall back to regular codec creation
+	return NewCodec(format)
+}
+
 // Register built-in codecs
 func init() {
 	registerCodec("raw", func() Codec {
