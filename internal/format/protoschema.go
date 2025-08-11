@@ -70,16 +70,29 @@ func (c *ProtoSchemaCodec) loadSchema() error {
 		}),
 	}
 
-	// Compile the proto files
-	files, err := compiler.Compile(context.Background(), protoFiles...)
-	if err != nil {
-		return fmt.Errorf("failed to compile proto files: %w", err)
-	}
-
-	// Create a file descriptor set
+	// Try compiling all proto files at once first
 	var fileDescriptors []protoreflect.FileDescriptor
-	for _, file := range files {
-		fileDescriptors = append(fileDescriptors, file)
+	files, err := compiler.Compile(context.Background(), protoFiles...)
+	if err == nil {
+		for _, file := range files {
+			fileDescriptors = append(fileDescriptors, file)
+		}
+	} else {
+		// Fall back to compiling files individually, ignoring failures (e.g., missing deps)
+		for _, pf := range protoFiles {
+			fds, ierr := compiler.Compile(context.Background(), pf)
+			if ierr != nil {
+				// Best-effort: ignore errors for individual files
+				continue
+			}
+			for _, fd := range fds {
+				fileDescriptors = append(fileDescriptors, fd)
+			}
+		}
+
+		if len(fileDescriptors) == 0 {
+			return fmt.Errorf("failed to compile proto files (no compilable files found). First error: %w", err)
+		}
 	}
 
 	// Find the message type
