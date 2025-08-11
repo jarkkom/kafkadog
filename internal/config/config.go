@@ -52,9 +52,9 @@ func Parse() (*Config, error) {
 	flag.BoolVar(&consumeMode, "C", false, "Consumer mode - read from Kafka and write to stdout")
 	flag.BoolVar(&decodeProtobuf, "proto", false, "Decode binary data as Protocol Buffers before applying output format")
 	flag.IntVar(&messageCount, "c", 0, "Number of messages to read in consumer mode (0 for unlimited)")
-	flag.StringVar(&consumerOffset, "o", "beginning", "Consumer offset - where to start consuming from: 'beginning', 'end', or an offset value")
 	flag.StringVar(&protoImportDirs, "I", "", "Comma-separated list of directories to search for .proto files")
 	flag.StringVar(&messageType, "M", "", "Message type for protobuf schema decoding (e.g. 'package.MessageName')")
+	flag.StringVar(&consumerOffset, "o", "end", "Consumer offset - where to start consuming from: 'beginning', 'end', or an offset value")
 
 	flag.Parse()
 
