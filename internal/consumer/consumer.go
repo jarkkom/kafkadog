@@ -13,34 +13,38 @@ import (
 
 // Consumer handles Kafka message consumption
 type Consumer struct {
-	client         *kgo.Client
-	codec          format.Codec
-	decodeProtobuf bool
-	protobufCodec  format.Codec // Separate codec for protobuf decoding
-	messageCount   int          // Number of messages to read, 0 for unlimited
+	client       *kgo.Client
+	codec        format.Codec
+	messageCount int // Number of messages to read, 0 for unlimited
 }
 
 // New creates a new Consumer instance
-func New(client *kgo.Client, formatStr config.Format, decodeProtobuf bool, messageCount int) (*Consumer, error) {
-	codec, err := format.NewCodec(string(formatStr))
-	if err != nil {
-		return nil, err
-	}
+func New(client *kgo.Client, formatStr config.Format, messageCount int, protoImportDirs []string, messageType string) (*Consumer, error) {
+	var codec format.Codec
+	var err error
 
-	var protoCodec format.Codec
-	if decodeProtobuf {
-		protoCodec, err = format.NewCodec("protobuf")
+	// Handle protobuf format specially
+	if string(formatStr) == "protobuf" {
+		// Use schema-based protobuf codec if import dirs and message type are provided
+		if len(protoImportDirs) > 0 && messageType != "" {
+			codec, err = format.NewCodecWithSchema("protobuf", protoImportDirs, messageType)
+		} else {
+			codec, err = format.NewCodec("protobuf")
+		}
 		if err != nil {
-			return nil, fmt.Errorf("failed to initialize protobuf decoder: %w", err)
+			return nil, fmt.Errorf("failed to initialize protobuf codec: %w", err)
+		}
+	} else {
+		codec, err = format.NewCodec(string(formatStr))
+		if err != nil {
+			return nil, err
 		}
 	}
 
 	return &Consumer{
-		client:         client,
-		codec:          codec,
-		decodeProtobuf: decodeProtobuf,
-		protobufCodec:  protoCodec,
-		messageCount:   messageCount,
+		client:       client,
+		codec:        codec,
+		messageCount: messageCount,
 	}, nil
 }
 
@@ -79,22 +83,8 @@ func (c *Consumer) Run(ctx context.Context, wg *sync.WaitGroup) {
 					return
 				}
 
-				var value []byte
-				var err error
-
-				// First step: Optionally decode protobuf
-				if c.decodeProtobuf {
-					value, err = c.protobufCodec.Encode(record.Value)
-					if err != nil {
-						fmt.Fprintf(os.Stderr, "Error decoding protobuf: %v\n", err)
-						return
-					}
-				} else {
-					value = record.Value
-				}
-
-				// Second step: Apply the configured output format
-				encoded, err := c.codec.Encode(value)
+				// Apply the configured format (which handles protobuf if needed)
+				encoded, err := c.codec.Encode(record.Value)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "Error formatting output: %v\n", err)
 					return

@@ -75,7 +75,7 @@ func main() {
 
 	if cfg.ConsumeMode {
 		wg.Add(1)
-		cons, err := consumer.New(client, cfg.Format, cfg.DecodeProtobuf, cfg.MessageCount)
+		cons, err := consumer.New(client, cfg.Format, cfg.MessageCount, cfg.ProtoImportDirs, cfg.MessageType)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating consumer: %v\n", err)
 			os.Exit(1)

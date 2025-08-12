@@ -141,12 +141,34 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
-			name:          "protobuf decoding",
-			args:          []string{"kafkadog", "-t", "test-topic", "-proto"},
+			name:          "protobuf format",
+			args:          []string{"kafkadog", "-t", "test-topic", "-f", "protobuf"},
 			expectedError: false,
 			check: func(t *testing.T, cfg *Config) {
-				if !cfg.DecodeProtobuf {
-					t.Errorf("Expected DecodeProtobuf=true, got false")
+				if string(cfg.Format) != "protobuf" {
+					t.Errorf("Expected Format='protobuf', got '%s'", cfg.Format)
+				}
+			},
+		},
+		{
+			name:          "protobuf with schema args",
+			args:          []string{"kafkadog", "-t", "test-topic", "-f", "protobuf", "-I", "./proto,./schemas", "-M", "MyMessage"},
+			expectedError: false,
+			check: func(t *testing.T, cfg *Config) {
+				if string(cfg.Format) != "protobuf" {
+					t.Errorf("Expected Format='protobuf', got '%s'", cfg.Format)
+				}
+				expectedDirs := []string{"./proto", "./schemas"}
+				if len(cfg.ProtoImportDirs) != len(expectedDirs) {
+					t.Errorf("Expected %d import dirs, got %d", len(expectedDirs), len(cfg.ProtoImportDirs))
+				}
+				for i, dir := range expectedDirs {
+					if i >= len(cfg.ProtoImportDirs) || cfg.ProtoImportDirs[i] != dir {
+						t.Errorf("Expected import dir '%s' at position %d, got '%s'", dir, i, cfg.ProtoImportDirs[i])
+					}
+				}
+				if cfg.MessageType != "MyMessage" {
+					t.Errorf("Expected MessageType='MyMessage', got '%s'", cfg.MessageType)
 				}
 			},
 		},

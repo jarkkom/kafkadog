@@ -15,27 +15,31 @@ type Format string
 
 // Config holds application configuration
 type Config struct {
-	Brokers        []string
-	Topic          string
-	ProduceMode    bool
-	ConsumeMode    bool
-	Format         Format
-	DecodeProtobuf bool   // New field for protobuf decoding
-	MessageCount   int    // Number of messages to read in consumer mode, 0 for unlimited
-	ConsumerOffset string // Controls where to start consuming from: "beginning", "end", or an offset value
+	Brokers     []string
+	Topic       string
+	ProduceMode bool
+	ConsumeMode bool
+	Format      Format
+	// DecodeProtobuf removed - use Format == "protobuf" instead
+	MessageCount    int      // Number of messages to read in consumer mode, 0 for unlimited
+	ConsumerOffset  string   // Controls where to start consuming from: "beginning", "end", or an offset value
+	ProtoImportDirs []string // Directories to search for .proto files (-I flag)
+	MessageType     string   // Message type for protobuf schema decoding (-M flag)
 }
 
 // Parse processes command line arguments and returns a Config
 func Parse() (*Config, error) {
 	var (
-		brokers        string
-		topic          string
-		format         string
-		produceMode    bool
-		consumeMode    bool
-		decodeProtobuf bool   // New variable for protobuf decoding flag
-		messageCount   int    // Number of messages to read in consumer mode
-		consumerOffset string // New variable for consumer offset flag
+		brokers     string
+		topic       string
+		format      string
+		produceMode bool
+		consumeMode bool
+		// decodeProtobuf removed - use format == "protobuf" instead
+		messageCount    int    // Number of messages to read in consumer mode
+		consumerOffset  string // New variable for consumer offset flag
+		protoImportDirs string // Comma-separated list of proto import directories
+		messageType     string // Message type for protobuf schema decoding
 	)
 
 	availableFormats := ff.GetAvailableFormats()
@@ -46,8 +50,10 @@ func Parse() (*Config, error) {
 	flag.StringVar(&format, "f", "raw", formatUsage)
 	flag.BoolVar(&produceMode, "P", false, "Producer mode - read from stdin and send to Kafka")
 	flag.BoolVar(&consumeMode, "C", false, "Consumer mode - read from Kafka and write to stdout")
-	flag.BoolVar(&decodeProtobuf, "proto", false, "Decode binary data as Protocol Buffers before applying output format")
+	// -proto flag removed - use -f protobuf instead
 	flag.IntVar(&messageCount, "c", 0, "Number of messages to read in consumer mode (0 for unlimited)")
+	flag.StringVar(&protoImportDirs, "I", "", "Comma-separated list of directories to search for .proto files")
+	flag.StringVar(&messageType, "M", "", "Message type for protobuf schema decoding (e.g. 'package.MessageName')")
 	flag.StringVar(&consumerOffset, "o", "end", "Consumer offset - where to start consuming from: 'beginning', 'end', or an offset value")
 
 	flag.Parse()
@@ -71,15 +77,27 @@ func Parse() (*Config, error) {
 		return nil, fmt.Errorf("invalid format (-f): %s. Must be one of: %s", format, strings.Join(availableFormats, ", "))
 	}
 
+	// Parse proto import directories
+	var protoImportDirsList []string
+	if protoImportDirs != "" {
+		protoImportDirsList = strings.Split(protoImportDirs, ",")
+		// Trim whitespace from each directory
+		for i, dir := range protoImportDirsList {
+			protoImportDirsList[i] = strings.TrimSpace(dir)
+		}
+	}
+
 	return &Config{
-		Brokers:        strings.Split(brokers, ","),
-		Topic:          topic,
-		ProduceMode:    produceMode,
-		ConsumeMode:    consumeMode,
-		Format:         Format(format),
-		DecodeProtobuf: decodeProtobuf,
-		MessageCount:   messageCount,
-		ConsumerOffset: consumerOffset,
+		Brokers:     strings.Split(brokers, ","),
+		Topic:       topic,
+		ProduceMode: produceMode,
+		ConsumeMode: consumeMode,
+		Format:      Format(format),
+		// DecodeProtobuf removed - use Format == "protobuf" instead
+		MessageCount:    messageCount,
+		ConsumerOffset:  consumerOffset,
+		ProtoImportDirs: protoImportDirsList,
+		MessageType:     messageType,
 	}, nil
 }
 
